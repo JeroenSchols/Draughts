@@ -17,7 +17,7 @@ import org10x10.dam.game.Move;
 public class MyDraughtsPlayer  extends DraughtsPlayer{
     private int bestValue=0;
     int maxSearchDepth;
-    //fs
+    
     /** boolean that indicates that the GUI asked the player to stop thinking. */
     private boolean stopped;
 
