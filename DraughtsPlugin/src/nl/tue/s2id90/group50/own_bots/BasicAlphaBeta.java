@@ -1,4 +1,4 @@
-package nl.tue.s2id90.group50;
+package nl.tue.s2id90.group50.own_bots;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.MIN_VALUE;
@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import nl.tue.s2id90.draughts.DraughtsState;
 import nl.tue.s2id90.draughts.player.DraughtsPlayer;
+import nl.tue.s2id90.group50.AIStoppedException;
+import nl.tue.s2id90.group50.DraughtsNode;
 import org10x10.dam.game.Move;
 
 /**
@@ -15,42 +17,45 @@ import org10x10.dam.game.Move;
  */
 // ToDo: rename this class (and hence this file) to have a distinct name
 //       for your player during the tournament
-public class Bot1 extends DraughtsPlayer {
+public class BasicAlphaBeta extends DraughtsPlayer {
 
     private int bestValue = 0;
-    int maxSearchDepth;
+    int maxSearchDepth = 0;
 
     /**
      * boolean that indicates that the GUI asked the player to stop thinking.
      */
     private boolean stopped;
 
-    public Bot1(int maxSearchDepth) {
-        super("best.png"); // ToDo: replace with your own icon
-        this.maxSearchDepth = 1; // temporarily set as a fixed depth
+    public BasicAlphaBeta(int maxSearchDepth) {
+        super("Basic.png"); // ToDo: replace with your own icon
+        //this.maxSearchDepth = maxSearchDepth; // This is no longer used due to iterative deepening
     }
 
     @Override
     public Move getMove(DraughtsState s) {
         Move bestMove = null;
         bestValue = 0;
+        maxSearchDepth = 0;
         DraughtsNode node = new DraughtsNode(s);    // the root of the search tree
         try {
-            // compute bestMove and bestValue in a call to alphabeta
-            bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, maxSearchDepth);
+            while (!stopped) {
+                maxSearchDepth++;
+                // compute bestMove and bestValue in a call to alphabeta
+                bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, maxSearchDepth);
 
-            // store the bestMove found uptill now
-            // NB this is not done in case of an AIStoppedException in alphaBeat()
-            bestMove = node.getBestMove();
-
-            // print the results for debugging reasons
-            System.err.format(
-                    "%s: depth= %2d, best move = %5s, value=%d\n",
-                    this.getClass().getSimpleName(), maxSearchDepth, bestMove, bestValue
-            );
-        } catch (AIStoppedException ex) {
-            /* nothing to do */ }
-
+                // store the bestMove found uptill now
+                // NB this is not done in case of an AIStoppedException in alphaBeat()
+                bestMove = node.getBestMove();
+                /* Removed this for convenience
+                // print the results for debugging reasons
+                System.err.format(
+                        "%s: depth= %2d, best move = %5s, value=%d\n",
+                        this.getClass().getSimpleName(), maxSearchDepth, bestMove, bestValue
+                );
+                */
+            }
+        } catch (AIStoppedException ex) { /* nothing to do */ }
         if (bestMove == null) {
             System.err.println("no valid move found!");
             return getRandomValidMove(s);
@@ -72,7 +77,6 @@ public class Bot1 extends DraughtsPlayer {
     /**
      * Tries to make alphabeta search stop. Search should be implemented such that it throws an AIStoppedException when
      * boolean stopped is set to true;
-     *
      */
     @Override
     public void stop() {
@@ -85,7 +89,8 @@ public class Bot1 extends DraughtsPlayer {
     Move getRandomValidMove(DraughtsState s) {
         List<Move> moves = s.getMoves();
         Collections.shuffle(moves);
-        return moves.isEmpty() ? null : moves.get(0);
+        return moves.get(0);
+       // return moves.isEmpty() ? null : moves.get(0);
     }
 
     /**
@@ -194,16 +199,16 @@ public class Bot1 extends DraughtsPlayer {
         int[] pieces = state.getPieces();
         int value = 0;
         // empty = 0, whitePiece = 1, blackpiece = 2, whiteKing = 3, blackKing = 4
-        // Uses very bad evaluation for testing purposes.
+        // uses very simplistic evaluation by piece count.
         for (int piece : pieces) {
             if (piece == 1) {
-                value--;
+                value++;
             } else if (piece == 2) {
-                //    value--;
+                value--;
             } else if (piece == 3) {
-                //    value += 5;
+                value += 5;
             } else if (piece == 4) {
-                //    value -= 5;
+                value -= 5;
             }
         }
         return value;
