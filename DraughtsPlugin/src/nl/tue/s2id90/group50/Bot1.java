@@ -27,7 +27,7 @@ public class Bot1 extends DraughtsPlayer {
 
     public Bot1(int maxSearchDepth) {
         super("best.png"); // ToDo: replace with your own icon
-        this.maxSearchDepth = maxSearchDepth;
+        this.maxSearchDepth = 1; // temporarily set as a fixed depth
     }
 
     @Override
@@ -48,7 +48,8 @@ public class Bot1 extends DraughtsPlayer {
                     "%s: depth= %2d, best move = %5s, value=%d\n",
                     this.getClass().getSimpleName(), maxSearchDepth, bestMove, bestValue
             );
-        } catch (AIStoppedException ex) { /* nothing to do */ }
+        } catch (AIStoppedException ex) {
+            /* nothing to do */ }
 
         if (bestMove == null) {
             System.err.println("no valid move found!");
@@ -134,14 +135,16 @@ public class Bot1 extends DraughtsPlayer {
         }
         DraughtsState state = node.getState();
         // ToDo: write an alphabeta search to compute bestMove and value
-        if (depth < 0) {
+        List<Move> possibleMoves = state.getMoves();
+        if (depth < 0 || state.isEndState()) {
             return evaluate(state);
         }
-        List<Move> possibleMoves = state.getMoves();
-        Move bestMove = state.getMoves().get(0);
+        Move bestMove = possibleMoves.get(0);
+        int foundBeta;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            int foundBeta = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth - 1);
+            foundBeta = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            state.undoMove(move);
             if (beta > foundBeta) {
                 bestMove = move;
                 beta = foundBeta;
@@ -149,11 +152,9 @@ public class Bot1 extends DraughtsPlayer {
                     return alpha;
                 }
             }
-            state.undoMove(move);
         }
-        int value = 0;
         node.setBestMove(bestMove);
-        return value;
+        return beta;
     }
 
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
@@ -163,14 +164,16 @@ public class Bot1 extends DraughtsPlayer {
         }
         DraughtsState state = node.getState();
         // ToDo: write an alphabeta search to compute bestMove and value
-        if (depth < 0) {
+        List<Move> possibleMoves = state.getMoves();
+        if (depth < 0 || state.isEndState()) {
             return evaluate(state);
         }
-        List<Move> possibleMoves = state.getMoves();
-        Move bestMove = state.getMoves().get(0);
+        Move bestMove = possibleMoves.get(0);
+        int foundAlpha;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            int foundAlpha = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth - 1);
+            foundAlpha = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            state.undoMove(move);
             if (alpha < foundAlpha) {
                 bestMove = move;
                 alpha = foundAlpha;
@@ -178,11 +181,9 @@ public class Bot1 extends DraughtsPlayer {
                     return beta;
                 }
             }
-            state.undoMove(move);
         }
-        int value = 0;
         node.setBestMove(bestMove);
-        return value;
+        return alpha;
     }
 
     /**
@@ -190,6 +191,21 @@ public class Bot1 extends DraughtsPlayer {
      */
     // ToDo: write an appropriate evaluation function
     int evaluate(DraughtsState state) {
-        return 0;
+        int[] pieces = state.getPieces();
+        int value = 0;
+        // empty = 0, whitePiece = 1, blackpiece = 2, whiteKing = 3, blackKing = 4
+        // Uses very bad evaluation for testing purposes.
+        for (int piece : pieces) {
+            if (piece == 1) {
+                value--;
+            } else if (piece == 2) {
+                //    value--;
+            } else if (piece == 3) {
+                //    value += 5;
+            } else if (piece == 4) {
+                //    value -= 5;
+            }
+        }
+        return value;
     }
 }
