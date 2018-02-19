@@ -1,6 +1,7 @@
 package nl.tue.s2id90.group50;
 
 import nl.tue.s2id90.group50.own_bots.BasicAlphaBeta;
+import nl.tue.s2id90.group50.own_bots.TranspositionBot;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
 import nl.tue.s2id90.draughts.DraughtsPlayerProvider;
 import nl.tue.s2id90.draughts.DraughtsPlugin;
@@ -21,7 +22,8 @@ public class MyDraughtsPlugin extends DraughtsPlayerProvider implements Draughts
         // During the final competition you should make only your 
         // best player available. For testing it might be handy
         // to make more than one player available.
-        super(new BasicAlphaBeta(5),
+        super(new BasicAlphaBeta(),
+                new TranspositionBot(),
                 new UninformedPlayer(),
                 new OptimisticPlayer(),
                 new BuggyPlayer()

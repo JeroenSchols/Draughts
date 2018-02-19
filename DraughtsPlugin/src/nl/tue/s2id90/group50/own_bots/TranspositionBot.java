@@ -18,7 +18,7 @@ import org10x10.dam.game.Move;
  */
 // ToDo: rename this class (and hence this file) to have a distinct name
 //       for your player during the tournament
-public class BasicAlphaBeta extends DraughtsPlayer {
+public class TranspositionBot extends DraughtsPlayer {
 
     private int bestValue = 0;
     int maxSearchDepth;
@@ -29,8 +29,8 @@ public class BasicAlphaBeta extends DraughtsPlayer {
      */
     private boolean stopped;
 
-    public BasicAlphaBeta() {
-        super("Basic.png"); // ToDo: replace with your own icon
+    public TranspositionBot() {
+        super("Trans.jpg"); // ToDo: replace with your own icon
         //this.maxSearchDepth = maxSearchDepth; // This is no longer used due to iterative deepening
     }
 
@@ -50,13 +50,14 @@ public class BasicAlphaBeta extends DraughtsPlayer {
                 // store the bestMove found uptill now
                 // NB this is not done in case of an AIStoppedException in alphaBeat()
                 bestMove = node.getBestMove();
+                // print the results for debugging reasons
+                
             }
         } catch (AIStoppedException ex) { /* nothing to do */ }
         if (bestMove == null) {
             System.err.println("no valid move found!");
             return getRandomValidMove(s);
         } else {
-            // print the results for debugging reasons
             System.err.format(
                         "%s: depth= %2d, best move = %5s, value=%d\n",
                         this.getClass().getSimpleName(), maxSearchDepth - 1, bestMove, bestValue
