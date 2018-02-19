@@ -4,7 +4,6 @@ import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.MIN_VALUE;
 import java.util.Collections;
 import java.util.List;
-import java.util.Stack;
 import nl.tue.s2id90.draughts.DraughtsState;
 import nl.tue.s2id90.draughts.player.DraughtsPlayer;
 import nl.tue.s2id90.group50.AIStoppedException;
@@ -12,17 +11,16 @@ import nl.tue.s2id90.group50.DraughtsNode;
 import org10x10.dam.game.Move;
 
 /**
- * Implementation of the DraughtsPlayer interface.
+ * Implementation of the basic required player.
  *
- * @author huub
+ * @author Jeroen, Andreas
  */
-// ToDo: rename this class (and hence this file) to have a distinct name
-//       for your player during the tournament
 public class BasicAlphaBeta extends DraughtsPlayer {
+    
+    final static int MAXSEARCHDEPTH = 200;
 
     private int bestValue = 0;
-    int maxSearchDepth;
-    Stack<Move> stack = new Stack<>();
+    int visitedStates; // measure for states checked
 
     /**
      * boolean that indicates that the GUI asked the player to stop thinking.
@@ -30,37 +28,41 @@ public class BasicAlphaBeta extends DraughtsPlayer {
     private boolean stopped;
 
     public BasicAlphaBeta() {
-        super("Basic.png"); // ToDo: replace with your own icon
-        //this.maxSearchDepth = maxSearchDepth; // This is no longer used due to iterative deepening
+        super("Basic.png");
     }
 
     @Override
     public Move getMove(DraughtsState s) {
         Move bestMove = null;
         bestValue = 0;
-        maxSearchDepth = 0;
+        int depth = 0;
+        visitedStates = 0;
         DraughtsNode node = new DraughtsNode(s);    // the root of the search tree
+
         try {
-            while (!stopped) {
-                maxSearchDepth++;
-                //maxSearchDepth++;
+            while (!stopped && depth < MAXSEARCHDEPTH) {
+                // implements iterative deepening up till MAXSEARCHDEPTH
+                depth++;
+
                 // compute bestMove and bestValue in a call to alphabeta
-                bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, maxSearchDepth);
+                bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, depth);
 
                 // store the bestMove found uptill now
                 // NB this is not done in case of an AIStoppedException in alphaBeat()
                 bestMove = node.getBestMove();
             }
         } catch (AIStoppedException ex) { /* nothing to do */ }
+
         if (bestMove == null) {
+            // When no best move is set, return a random valid move
             System.err.println("no valid move found!");
             return getRandomValidMove(s);
         } else {
             // print the results for debugging reasons
             System.err.format(
-                        "%s: depth= %2d, best move = %5s, value=%d\n",
-                        this.getClass().getSimpleName(), maxSearchDepth - 1, bestMove, bestValue
-                );
+                    "%s: depth = %2d, best move = %5s, value = %d\n, discovered = %8d,",
+                    this.getClass().getSimpleName(), depth, bestMove, bestValue, visitedStates
+            );
             return bestMove;
         }
     }
@@ -100,22 +102,24 @@ public class BasicAlphaBeta extends DraughtsPlayer {
      * @param node contains DraughtsState and has field to which the best move can be assigned.
      * @param alpha
      * @param beta
-     * @param depth maximum recursion Depth
+     * @param depth maximum recursion depth from current state
      * @return the computed value of this node
      * @throws AIStoppedException
      *
      */
     int alphaBeta(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
-        if (stopped) {
+        if (stopped) { // stops the player when timeLimit is reached
             stopped = false;
             throw new AIStoppedException();
         }
-        
+
+        visitedStates++;
+
         DraughtsState state = node.getState();
         if (depth < 0 || state.isEndState()) {
             return evaluate(state);
         }
-        
+
         if (state.isWhiteToMove()) {
             return alphaBetaMax(node, alpha, beta, depth);
         } else {
@@ -188,7 +192,6 @@ public class BasicAlphaBeta extends DraughtsPlayer {
     /**
      * A method that evaluates the given state.
      */
-    // ToDo: write an appropriate evaluation function
     int evaluate(DraughtsState state) {
         int[] pieces = state.getPieces();
         int value = 0;
