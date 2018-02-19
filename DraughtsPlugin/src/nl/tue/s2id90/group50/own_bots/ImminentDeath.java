@@ -2,10 +2,8 @@ package nl.tue.s2id90.group50.own_bots;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.MIN_VALUE;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import nl.tue.s2id90.draughts.DraughtsState;
 import nl.tue.s2id90.draughts.player.DraughtsPlayer;
 import nl.tue.s2id90.group50.AIStoppedException;
@@ -13,20 +11,16 @@ import nl.tue.s2id90.group50.DraughtsNode;
 import org10x10.dam.game.Move;
 
 /**
- * Implementation of the DraughtsPlayer interface.
+ * Implementation of the basic required player.
  *
- * @author huub
+ * @author Jeroen, Andreas
  */
-// ToDo: rename this class (and hence this file) to have a distinct name
-//       for your player during the tournament
 public class ImminentDeath extends DraughtsPlayer {
-
-    Random random = new Random();
-    static final int PRECISION = 5;
     
+    final static int MAXSEARCHDEPTH = 200;
+    HashStates hashStates;
     private int bestValue = 0;
-    int maxSearchDepth;
-    int visitedStates;
+    int visitedStates; // measure for states checked
 
     /**
      * boolean that indicates that the GUI asked the player to stop thinking.
@@ -34,36 +28,42 @@ public class ImminentDeath extends DraughtsPlayer {
     private boolean stopped;
 
     public ImminentDeath() {
-        super("Pain.jpg"); // ToDo: replace with your own icon
+        super("pain.jpg");
     }
 
     @Override
     public Move getMove(DraughtsState s) {
+        hashStates = new HashStates();
         Move bestMove = null;
         bestValue = 0;
-        maxSearchDepth = 0;
+        int depth = 0;
+        visitedStates = 0;
         DraughtsNode node = new DraughtsNode(s);    // the root of the search tree
+
         try {
-            while (!stopped) {
-                visitedStates = 0;
-                maxSearchDepth++;
+            while (!stopped && depth < MAXSEARCHDEPTH) {
+                // implements iterative deepening up till MAXSEARCHDEPTH
+                depth++;
+
                 // compute bestMove and bestValue in a call to alphabeta
-                bestValue = alphaBeta(node, MIN_VALUE + 2 * PRECISION, MAX_VALUE - 2 * PRECISION, maxSearchDepth);
+                bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, depth);
 
                 // store the bestMove found uptill now
                 // NB this is not done in case of an AIStoppedException in alphaBeat()
                 bestMove = node.getBestMove();
             }
         } catch (AIStoppedException ex) { /* nothing to do */ }
+
         if (bestMove == null) {
+            // When no best move is set, return a random valid move
             System.err.println("no valid move found!");
             return getRandomValidMove(s);
         } else {
             // print the results for debugging reasons
             System.err.format(
-                        "%s: depth = %2d, best move = %5s, value = %d\n, discovered = %8d,",
-                        this.getClass().getSimpleName(), maxSearchDepth - 1, bestMove, bestValue, visitedStates
-                );
+                    "%s: depth = %2d, best move = %5s, value = %d\n, discovered = %8d,",
+                    this.getClass().getSimpleName(), depth, bestMove, bestValue, visitedStates
+            );
             return bestMove;
         }
     }
@@ -103,13 +103,25 @@ public class ImminentDeath extends DraughtsPlayer {
      * @param node contains DraughtsState and has field to which the best move can be assigned.
      * @param alpha
      * @param beta
-     * @param depth maximum recursion Depth
+     * @param depth maximum recursion depth from current state
      * @return the computed value of this node
      * @throws AIStoppedException
      *
      */
     int alphaBeta(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
-        if (node.getState().isWhiteToMove()) {
+        if (stopped) { // stops the player when timeLimit is reached
+            stopped = false;
+            throw new AIStoppedException();
+        }
+
+        visitedStates++;
+
+        DraughtsState state = node.getState();
+        if (depth < 0 || state.isEndState()) {
+            return evaluate(state);
+        }
+
+        if (state.isWhiteToMove()) {
             return alphaBetaMax(node, alpha, beta, depth);
         } else {
             return alphaBetaMin(node, alpha, beta, depth);
@@ -137,89 +149,64 @@ public class ImminentDeath extends DraughtsPlayer {
      * @throws AIStoppedException thrown whenever the boolean stopped has been set to true.
      */
     int alphaBetaMin(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
-        if (stopped) {
-            stopped = false;
-            throw new AIStoppedException();
-        }
-        visitedStates++;
         DraughtsState state = node.getState();
-        if (state.isWhiteToMove()) { throw new Error(); }
         List<Move> possibleMoves = state.getMoves();
-        if (state.isEndState()) {
-            return evaluate(state);
+        Move tryMove = hashStates.Retieve(state.toString());
+        if (tryMove != null) {
+            if (possibleMoves.contains(tryMove)){
+                possibleMoves.add(0, tryMove);
+            }
         }
         Move bestMove = possibleMoves.get(0);
-        if (depth < 0 && !bestMove.isCapture()) {
-            return evaluate(state);
-        }
-        ArrayList<Move> goodMoves = new ArrayList<>();
-        goodMoves.add(bestMove);
         int foundBeta;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            foundBeta = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth - 1);
+            foundBeta = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
             state.undoMove(move);
-            if (beta + PRECISION > foundBeta) {
-                goodMoves.add(move);
-            }
             if (beta > foundBeta) {
-                goodMoves.clear();
-                goodMoves.add(move);
+                bestMove = move;
                 beta = foundBeta;
                 if (beta <= alpha) {
                     return alpha;
                 }
             }
         }
-        Collections.shuffle(goodMoves);
-        node.setBestMove(goodMoves.get(0));
+        node.setBestMove(bestMove);
+        hashStates.insert(state.toString(), bestMove);
         return beta;
     }
 
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
-        if (stopped) {
-            stopped = false;
-            throw new AIStoppedException();
-        }
-        visitedStates++;
         DraughtsState state = node.getState();
-        if (!state.isWhiteToMove()) { throw new Error(); }
         List<Move> possibleMoves = state.getMoves();
-        if (state.isEndState()) {
-            return evaluate(state);
+        Move tryMove = hashStates.Retieve(state.toString());
+        if (tryMove != null) {
+            if (possibleMoves.contains(tryMove)){
+                possibleMoves.add(0, tryMove);
+            }
         }
         Move bestMove = possibleMoves.get(0);
-        if (depth < 0 && !bestMove.isCapture()) {
-            return evaluate(state);
-        }
-        ArrayList<Move> goodMoves = new ArrayList<>();
-        goodMoves.add(bestMove);
-        int foundAlpha;     
+        int foundAlpha;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            foundAlpha = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth - 1);
+            foundAlpha = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
             state.undoMove(move);
-            if (alpha - PRECISION < foundAlpha) {
-                goodMoves.add(move);
-            }
             if (alpha < foundAlpha) {
-                goodMoves.clear();
-                goodMoves.add(move);
+                bestMove = move;
                 alpha = foundAlpha;
                 if (alpha >= beta) {
                     return beta;
-                }  
+                }
             }
         }
-        Collections.shuffle(goodMoves);
-        node.setBestMove(goodMoves.get(0));
+        node.setBestMove(bestMove);
+        hashStates.insert(state.toString(), bestMove);
         return alpha;
     }
 
     /**
      * A method that evaluates the given state.
      */
-    // ToDo: write an appropriate evaluation function
     int evaluate(DraughtsState state) {
         int[] pieces = state.getPieces();
         int value = 0;
@@ -227,13 +214,13 @@ public class ImminentDeath extends DraughtsPlayer {
         // uses very simplistic evaluation by piece count.
         for (int piece : pieces) {
             if (piece == 1) {
-                value += 100;
+                value++;
             } else if (piece == 2) {
-                value -= 100;
+                value--;
             } else if (piece == 3) {
-                value += 500;
+                value += 5;
             } else if (piece == 4) {
-                value -= 500;
+                value -= 5;
             }
         }
         return value;
