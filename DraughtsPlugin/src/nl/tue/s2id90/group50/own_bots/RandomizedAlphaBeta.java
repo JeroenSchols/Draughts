@@ -16,25 +16,26 @@ import org10x10.dam.game.Move;
  *
  * @author Jeroen, Andreas
  */
-public class ImminentDeath extends DraughtsPlayer implements DamConstants {
+public class RandomizedAlphaBeta extends DraughtsPlayer implements DamConstants {
     
-    final static int MAXSEARCHDEPTH = 200;
-    HashStates hashStates;
+    private final static int MAXSEARCHDEPTH = 200;
+    private final static int RANDOMSEARCHDEPTH = 3;
+    private final static int RANDOMSEARCHTRIES = 10;
+
     private int bestValue = 0;
-    int visitedStates; // measure for states checked
+    private int visitedStates; // measure for states checked
 
     /**
      * boolean that indicates that the GUI asked the player to stop thinking.
      */
     private boolean stopped;
 
-    public ImminentDeath() {
-        super("Pain.jpg");
+    public RandomizedAlphaBeta() {
+        super("Layers.png");
     }
 
     @Override
     public Move getMove(DraughtsState s) {
-        hashStates = new HashStates();
         Move bestMove = null;
         bestValue = 0;
         int depth = 0;
@@ -118,8 +119,13 @@ public class ImminentDeath extends DraughtsPlayer implements DamConstants {
         visitedStates++;
 
         DraughtsState state = node.getState();
-        if (depth < 0 || state.isEndState()) {
+        if (state.isEndState()) {
             return evaluate(state);
+        }
+        
+        if (depth < 0) {
+            return randomPlay(state);
+            //return evaluate(state);  
         }
 
         if (state.isWhiteToMove()) {
@@ -152,17 +158,15 @@ public class ImminentDeath extends DraughtsPlayer implements DamConstants {
     int alphaBetaMin(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves();
-        Move tryMove = hashStates.Retieve(state.toString());
-        if (tryMove != null) {
-            if (possibleMoves.contains(tryMove)){
-                possibleMoves.add(0, tryMove);
-            }
-        }
         Move bestMove = possibleMoves.get(0);
         int foundBeta;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            foundBeta = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            if (move.isCapture()) {
+                foundBeta = alphaBeta(new DraughtsNode(state), alpha, beta, depth);
+            } else {
+                foundBeta = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            }    
             state.undoMove(move);
             if (beta > foundBeta) {
                 bestMove = move;
@@ -173,24 +177,21 @@ public class ImminentDeath extends DraughtsPlayer implements DamConstants {
             }
         }
         node.setBestMove(bestMove);
-        hashStates.insert(state.toString(), bestMove);
         return beta;
     }
 
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
         DraughtsState state = node.getState();
         List<Move> possibleMoves = state.getMoves();
-        Move tryMove = hashStates.Retieve(state.toString());
-        if (tryMove != null) {
-            if (possibleMoves.contains(tryMove)){
-                possibleMoves.add(0, tryMove);
-            }
-        }
         Move bestMove = possibleMoves.get(0);
         int foundAlpha;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            foundAlpha = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            if (move.isCapture()) {
+                foundAlpha = alphaBeta(new DraughtsNode(state), alpha, beta, depth);
+            } else {
+                foundAlpha = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            }
             state.undoMove(move);
             if (alpha < foundAlpha) {
                 bestMove = move;
@@ -201,7 +202,6 @@ public class ImminentDeath extends DraughtsPlayer implements DamConstants {
             }
         }
         node.setBestMove(bestMove);
-        hashStates.insert(state.toString(), bestMove);
         return alpha;
     }
 
@@ -211,19 +211,42 @@ public class ImminentDeath extends DraughtsPlayer implements DamConstants {
     int evaluate(DraughtsState state) {
         int[] pieces = state.getPieces();
         int value = 0;
-        // empty = 0, whitePiece = 1, blackpiece = 2, whiteKing = 3, blackKing = 4
         // uses very simplistic evaluation by piece count.
         for (int piece : pieces) {
             if (piece == WHITEPIECE) {
-                value++;
+                value += 100;
             } else if (piece == BLACKPIECE) {
-                value--;
+                value -= 100;
             } else if (piece == WHITEKING) {
-                value += 5;
+                value += 500;
             } else if (piece == BLACKKING) {
-                value -= 5;
+                value -= 500;
             }
         }
         return value;
     }
+
+    private int randomPlay(DraughtsState rootState) throws AIStoppedException {
+        if (stopped) { // stops the player when timeLimit is reached
+            stopped = false;
+            throw new AIStoppedException();
+        }
+        int value = 0;
+        DraughtsState state;    
+        for (int tryNum = 0; tryNum < RANDOMSEARCHTRIES; tryNum++) {
+            state = rootState.clone();
+            for (int depNum = 0; depNum < RANDOMSEARCHDEPTH; depNum++) {
+                List<Move> moves = state.getMoves();
+                if (moves.isEmpty()) {
+                    break;
+                } else {
+                    Collections.shuffle(moves);
+                    state.doMove(moves.get(0));
+                }
+            }
+            value += evaluate(state);
+        }    
+        return value / RANDOMSEARCHTRIES;
+    }
+    
 }

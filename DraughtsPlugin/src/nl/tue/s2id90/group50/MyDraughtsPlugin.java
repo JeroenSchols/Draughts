@@ -2,12 +2,14 @@ package nl.tue.s2id90.group50;
 
 import nl.tue.s2id90.group50.own_bots.BasicAlphaBeta;
 import nl.tue.s2id90.group50.own_bots.ImminentDeath;
+import nl.tue.s2id90.group50.own_bots.RandomizedAlphaBeta;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
 import nl.tue.s2id90.draughts.DraughtsPlayerProvider;
 import nl.tue.s2id90.draughts.DraughtsPlugin;
 import nl.tue.s2id90.group50.samples.BuggyPlayer;
 import nl.tue.s2id90.group50.samples.OptimisticPlayer;
 import nl.tue.s2id90.group50.samples.UninformedPlayer;
+
 
 
 
@@ -24,6 +26,7 @@ public class MyDraughtsPlugin extends DraughtsPlayerProvider implements Draughts
         // to make more than one player available.
         super(new BasicAlphaBeta(),
                 new ImminentDeath(),
+                new RandomizedAlphaBeta(),
                 new UninformedPlayer(),
                 new OptimisticPlayer(),
                 new BuggyPlayer()
