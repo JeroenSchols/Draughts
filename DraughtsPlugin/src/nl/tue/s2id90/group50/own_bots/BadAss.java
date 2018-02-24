@@ -442,7 +442,6 @@ public class BadAss extends DraughtsPlayer {
 //        if (colour == 1) {
         row_value += Math.abs(row-9);
 //        }
-        row_value++;
         for (int i = -2; i <= 2; i++){
             tile_correction = ((Math.abs(i) % 2) == 0) ? 1 : 0;
             for (int j = -1 + tile_correction; j <= 1; j+=2){
@@ -458,7 +457,7 @@ public class BadAss extends DraughtsPlayer {
                 }
             }
         }
-        val *= Math.ceil(row_value);
+        val *= Math.ceil(Math.exp(row_value-4.5));
         return val;
     }
     
