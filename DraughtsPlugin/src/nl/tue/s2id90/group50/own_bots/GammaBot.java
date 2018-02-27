@@ -1,71 +1,61 @@
 package nl.tue.s2id90.group50.own_bots;
 
-import java.util.*;
-import java.lang.Object;
 import static java.lang.Integer.MAX_VALUE;
 import static java.lang.Integer.MIN_VALUE;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import nl.tue.s2id90.draughts.DraughtsState;
 import nl.tue.s2id90.draughts.player.DraughtsPlayer;
 import nl.tue.s2id90.group50.AIStoppedException;
 import nl.tue.s2id90.group50.DraughtsNode;
+import org10x10.dam.game.DamConstants;
+import static org10x10.dam.game.DamConstants.BLACKKING;
+import static org10x10.dam.game.DamConstants.BLACKPIECE;
+import static org10x10.dam.game.DamConstants.WHITEKING;
+import static org10x10.dam.game.DamConstants.WHITEPIECE;
 import org10x10.dam.game.Move;
 
-class BoardInfo {
-    int[][] board;
-    int value;
-//    LinkedList white_pieces = new LinkedList();
-//    LinkedList black_pieces = new LinkedList();
-    
-    BoardInfo(){
-        value = 0;
-        board = new int[10][10];
-    }
-}
 /**
  * Implementation of the basic required player.
  *
  * @author Jeroen, Andreas
  */
-public class BadAss extends DraughtsPlayer {
-    
-    final static int MAXSEARCHDEPTH = 20;
+public class GammaBot extends DraughtsPlayer implements DamConstants {
 
+    private final static int MAXSEARCHDEPTH = 200;
     private int bestValue = 0;
-    int visitedStates; // measure for states checked
-    private Move[] sorted_Moves;
-    private boolean sort = false;
+
     /**
      * boolean that indicates that the GUI asked the player to stop thinking.
      */
     private boolean stopped;
 
-    public BadAss() {
-        super("badass.jpg");
+    public GammaBot() {
+        super("Layers.png");
     }
 
     @Override
     public Move getMove(DraughtsState s) {
         Move bestMove = null;
         bestValue = 0;
-        int depth = 0;
-        visitedStates = 0;
+        int depth = 0; // set this to a better depth at the end of creation
         DraughtsNode node = new DraughtsNode(s);    // the root of the search tree
-//        boolean first = true;
-//        int initial_check_depth = 5;
+
         try {
             while (!stopped && depth < MAXSEARCHDEPTH) {
                 // implements iterative deepening up till MAXSEARCHDEPTH
                 depth++;
-              
+
                 // compute bestMove and bestValue in a call to alphabeta
                 bestValue = alphaBeta(node, MIN_VALUE, MAX_VALUE, depth);
+
+                // store the bestMove found uptill now
+                // NB this is not done in case of an AIStoppedException in alphaBeat()
                 bestMove = node.getBestMove();
-              //  sort_moves(node);
-               // sort = true;
             }
-        } catch (AIStoppedException ex) { /* nothing to do */ }
+        } catch (AIStoppedException ex) {
+            /* nothing to do */ }
 
         if (bestMove == null) {
             // When no best move is set, return a random valid move
@@ -74,13 +64,13 @@ public class BadAss extends DraughtsPlayer {
         } else {
             // print the results for debugging reasons
             System.err.format(
-                    "%s: depth = %2d, best move = %5s, value = %d\n, discovered = %8d,",
-                    this.getClass().getSimpleName(), depth, bestMove, bestValue, visitedStates
+                    "%s: depth = %2d, best move = %5s, value = %d\n,",
+                    this.getClass().getSimpleName(), depth, bestMove, bestValue
             );
             return bestMove;
         }
     }
-   
+
     /**
      * This method's return value is displayed in the AICompetition GUI.
      *
@@ -109,39 +99,6 @@ public class BadAss extends DraughtsPlayer {
         return moves.isEmpty() ? null : moves.get(0);
     }
 
-    
-    boolean isQuiet(DraughtsNode node, int alpha, int beta, int depth, int value){
-        boolean quiet = true;
-        DraughtsState state = node.getState();
-        List<Move> possibleMoves = state.getMoves();
-        int val = 0;
-        int max_val = MIN_VALUE;
-        int min_val = MAX_VALUE;
-        int quiet_margin = 150;
-        
-        for (Move move : possibleMoves) {
-            state.doMove(move);
-            val = evaluate(new DraughtsNode(state).getState());
-            state.undoMove(move);
-            if (val > max_val) {
-                max_val = val;
-            }
-            if (val < min_val) {
-                min_val = val;
-            }
-        }
-        if (state.isWhiteToMove()){
-            if (Math.abs(Math.abs(value) - Math.abs(max_val)) >= quiet_margin){
-                quiet = false;
-            }
-        }else {
-            if (Math.abs(Math.abs(value) - Math.abs(min_val)) >= quiet_margin){
-                quiet = false;
-            }
-        }
-        return quiet;
-    }
-    
     /**
      * Implementation of alphabeta that automatically chooses the white player as maximizing player and the black player
      * as minimizing player.
@@ -155,25 +112,7 @@ public class BadAss extends DraughtsPlayer {
      *
      */
     int alphaBeta(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
-        boolean quiet = true;
-        if (stopped) { // stops the player when timeLimit is reached
-            stopped = false;
-            throw new AIStoppedException();
-        }
-        visitedStates++;
         DraughtsState state = node.getState();
-        
-        if (depth < 0 || state.isEndState()) {
-            int value = evaluate(state);
-            int quiet_penalty = 500 * ((state.isWhiteToMove()) ? 1 : -1);
-            quiet = isQuiet(node, alpha, beta, depth, value);
-            if (quiet) {
-                return value;
-            }else {
-                return value - quiet_penalty;
-            }
-        }
-
         if (state.isWhiteToMove()) {
             return alphaBetaMax(node, alpha, beta, depth);
         } else {
@@ -181,43 +120,6 @@ public class BadAss extends DraughtsPlayer {
         }
     }
 
-    public void sort_moves(DraughtsNode node){
-        DraughtsState state = node.getState();
-        List<Move> possibleMoves = state.getMoves();
-        int[] val = new int[possibleMoves.size()];
-        int i = 0;
-        sorted_Moves = new Move[possibleMoves.size()];
-        
-        int multiplier = 1;
-        if (state.isWhiteToMove()){
-            multiplier = -1;
-        }
-        for (Move move : possibleMoves) {
-            state.doMove(move);
-            val[i] = evaluate(new DraughtsNode(state).getState())*multiplier;
-            state.undoMove(move);
-            sorted_Moves[i] = move;
-            i++;
-        }
-        
-        //Trivial bubble sort
-        for (i = 0; i < val.length; i++) {
-            for (int j = i + 1; j < val.length; j++) {
-                int tmp = 0;
-                Move temp;
-                if (val[i] > val[j]) {
-                    tmp = val[i];
-                    temp = sorted_Moves[i];
-                    val[i] = val[j];
-                    sorted_Moves[i] = sorted_Moves[j];
-                    val[j] = tmp;
-                    sorted_Moves[j] = temp;
-                }
-            }
-        }
-
-    }
-    
     /**
      * Does an alphabeta computation with the given alpha and beta where the player that is to move in node is the
      * minimizing player.
@@ -239,25 +141,25 @@ public class BadAss extends DraughtsPlayer {
      * @throws AIStoppedException thrown whenever the boolean stopped has been set to true.
      */
     int alphaBetaMin(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
-        DraughtsState state = node.getState();
-        List<Move> possibleMoves_list = state.getMoves();
-        Move[] possibleMoves = new Move[possibleMoves_list.size()];
-        // The first alphabeta check goes over the sorted list of moves.
-        boolean cap_sort = false;
-        if (sort) {
-            possibleMoves = sorted_Moves;
-            sort = false;
-            cap_sort = true;
-        }else {
-            possibleMoves_list.toArray(possibleMoves);
+        if (stopped) { // stops the player when timeLimit is reached
+            stopped = false;
+            throw new AIStoppedException();
         }
-        Move bestMove = possibleMoves[0];
+        DraughtsState state = node.getState();
+        if (state.isEndState()) {
+            return evaluate(state);
+        }
+        List<Move> possibleMoves = state.getMoves();
+        Move bestMove = possibleMoves.get(0);
+        if (bestMove.isCapture()) {
+            depth++;
+        } else if (depth < 0) {
+            return evaluate(state);
+        }
         int foundBeta;
-        int cap = possibleMoves_list.size()/2;
-        int i = 0;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            foundBeta = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            foundBeta = alphaBetaMax(new DraughtsNode(state), alpha, beta, depth - 1);
             state.undoMove(move);
             if (beta > foundBeta) {
                 bestMove = move;
@@ -266,49 +168,37 @@ public class BadAss extends DraughtsPlayer {
                     return alpha;
                 }
             }
-            i++;
-            if (cap_sort){
-                if (i > cap) {
-                    break;
-                }
-            }
         }
         node.setBestMove(bestMove);
         return beta;
     }
 
     int alphaBetaMax(DraughtsNode node, int alpha, int beta, int depth) throws AIStoppedException {
-        DraughtsState state = node.getState();
-        List<Move> possibleMoves_list = state.getMoves();
-        Move[] possibleMoves = new Move[possibleMoves_list.size()];
-        // The first alphabeta check goes over the sorted list of moves.
-        boolean cap_sort = false;
-        if (sort) {
-            possibleMoves = sorted_Moves;
-            sort = false;
-            cap_sort = true;
-        }else {
-            possibleMoves_list.toArray(possibleMoves);
+        if (stopped) { // stops the player when timeLimit is reached
+            stopped = false;
+            throw new AIStoppedException();
         }
-        Move bestMove = possibleMoves[0];
+        DraughtsState state = node.getState();
+        if (state.isEndState()) {
+            return evaluate(state);
+        }
+        List<Move> possibleMoves = state.getMoves();
+        Move bestMove = possibleMoves.get(0);
+        if (bestMove.isCapture()) {
+            depth++;
+        } else if (depth < 0) {
+            return evaluate(state);
+        }
         int foundAlpha;
-        int cap = possibleMoves_list.size()/2;
-        int i = 0;
         for (Move move : possibleMoves) {
             state.doMove(move);
-            foundAlpha = alphaBeta(new DraughtsNode(state), alpha, beta, depth - 1);
+            foundAlpha = alphaBetaMin(new DraughtsNode(state), alpha, beta, depth - 1);
             state.undoMove(move);
             if (alpha < foundAlpha) {
                 bestMove = move;
                 alpha = foundAlpha;
                 if (alpha >= beta) {
                     return beta;
-                }
-            }
-            i++;
-            if (cap_sort){
-                if (i > cap) {
-                    break;
                 }
             }
         }
@@ -320,71 +210,98 @@ public class BadAss extends DraughtsPlayer {
      * A method that evaluates the given state.
      */
     int evaluate(DraughtsState state) {
+        if (true) {
+            return evaluate2(state);
+        }
+        
+        int value = 0;
+        for (int r = 0; r < 10; r++) {
+            int rm2 = r%2;
+            for (int c = 1 + rm2; c < 10; c += 2) {
+                int piece = state.getPiece(r, c);
+                if (piece == WHITEPIECE) {
+                    value += 10000;
+                } else if (piece == BLACKPIECE) {
+                    value -= 10000;
+                } else if (piece == WHITEKING) {
+                    value += 30000;
+                } else if (piece == BLACKKING) {
+                    value -= 30000;
+                }
+            }
+        }
+        return value;
+    }
+    
+    /**
+     * A method that evaluates the given state.
+     */
+    int evaluate2(DraughtsState state) {
+        //sets the value of the piece
         int value_piece = 10000;
-        int value_king = value_piece*4;
-        boolean king = false;
-        boolean skip = false;
-//        int board[][] = new int[10][10];
+        int value_king = value_piece*3;
+        
+        boolean skip;
         int value = 0;
         int white_tile_correction;
         int colour = 0;
         int piece = 0;
         
+        // n_white = number of white pieces
+        // the w_distribution or the b_distribution hold the number of white or black pieces at the left of the board [0] centre [1] and right side [2].
         int n_white = 0;
-//        int n_black = 0;
-        int[] w_distribution = new int[3];
-        w_distribution[0] = 0;  w_distribution[1] = 0;  w_distribution[2] = 0;
-        int[] b_distribution = new int[3];
-        b_distribution[0] = 0;  b_distribution[1] = 0;  b_distribution[2] = 0;
+        int[] w_distribution = new int[]{0, 0, 0};
+        int[] b_distribution = new int[]{0, 0, 0};
         
+        //Goes over the board, only checking black squares.
         for (int row = 0; row < 10; row++) {
-            white_tile_correction = ((row % 2) == 0) ? 1 : 0;
-            for (int col = 0 + white_tile_correction; col < 10; col+=2){
+            white_tile_correction = ((row + 1) % 2); //skips a square if the row is even.
+            for (int col = white_tile_correction; col < 10; col += 2){
                 piece = state.getPiece(row, col);
                 skip = false;
+                //Add piece or king value and count the pieces.
                 switch (piece) {
-                    case 1:
+                    case WHITEPIECE:
                         value+= value_piece;
                         colour = 1;
-//                        white_pieces.add(board[row][col]);
-                        king = false;
                         n_white++;
                         break;
-                    case 2:
+                    case BLACKPIECE:
                         value-= value_piece;
                         colour = -1;
-//                        black_pieces.add(board[row][col]);
-                        king = false;
 //                        n_black++;
                         break;
-                    case 3:
+                    case WHITEKING:
                         value += value_king;
                         colour = 1;
-//                        white_pieces.add(board[row][col]);
-                        king = true;
+                        skip = true;
                         n_white++;
                         break;
-                    case 4:
+                    case BLACKKING:
                         value -= value_king;
                         colour = -1;
-//                        black_pieces.add(board[row][col]);
-                        king = true;
-//                        n_black++;
-                        break;
-                    case 0:
                         skip = true;
+//                        n_black++;
                         break;
                     default:
                         skip = true;
                         break;
                 }
-                if (!king && !skip){
-//                    if (colour == 1) {
-                      value += Math.abs(row-9)*4;
-//                    }else {
-//                        value += row*colour;
-//                    }
+                //If it is not a king, who can move around, and it is not an empty tile
+                //  assign value for its positioning on the board
+                if (!skip){
+                    //Value for how far it is on the board. Now a guassian-like distribution
+                    int row_value;
+                    if (colour == 1) {
+                      row_value = Math.abs(row-9);
+                    } else {
+                        row_value = row;
+                    }
+                    value += Math.ceil(Math.abs(Math.abs(row_value-4.5)-4.5))*colour;;
+                    
+                    //Value for how centered the pieces are on the board
                     value += Math.ceil(Math.abs(Math.abs(col-4.5)-4.5))*colour;
+                    //Assign distribution on the 3 sides of the board
                     if (colour == 1){
                         if (col >= 0 && col <= 2){
                             w_distribution[0] ++;
@@ -394,6 +311,7 @@ public class BadAss extends DraughtsPlayer {
                             w_distribution[2] ++;
                         }
                     } 
+               
                     if (colour == -1){
                         if (col >= 0 && col <= 2){
                             b_distribution[0] ++;
@@ -403,14 +321,17 @@ public class BadAss extends DraughtsPlayer {
                             b_distribution[2] ++;
                         }
                     } 
-
+                    
+                    //Check if pieces are grouped together (better defense)
                     int neighbourhood_val = check_neighbourhood(row, col, state, colour);
-                    value+= neighbourhood_val*colour*2;
+                    int neighbourhood_value = 2;
+                    value += neighbourhood_val*colour * neighbourhood_value;
                 }
             }
         }
         int dist_val = 0;
         int check = 0;
+        //Check for how distributed the white pieces are.
         if (w_distribution[0] == Math.ceil(n_white/3.0) || w_distribution[0] == Math.floor(n_white/3.0)) {
             dist_val+= 10;
             check++;
@@ -424,9 +345,11 @@ public class BadAss extends DraughtsPlayer {
             check++;
         }
         value+= dist_val;
+        //Award  uniform distribution on the board
         if (check == 3) {
             value+=20;
         }
+        //Award better distribution than opponent
         value+= (w_distribution[0] > b_distribution[0]) ? 20 : -20;
         value+= (w_distribution[1] > b_distribution[1]) ? 25 : -25;
         value+= (w_distribution[2] > b_distribution[2]) ? 20 : -20;
@@ -440,9 +363,12 @@ public class BadAss extends DraughtsPlayer {
         int piece;
         int tile_correction;
         int row_value = 0;
-//        if (colour == 1) {
-        row_value += Math.abs(row-9);
-//        }
+        if (colour == 1) {
+            row_value += Math.abs(row-9);
+        }else {
+            row_value = row;
+        }
+        //Check neighbourhood in a collumn like manner
         for (int i = -2; i <= 2; i++){
             tile_correction = ((Math.abs(i) % 2) == 0) ? 1 : 0;
             for (int j = -1 + tile_correction; j <= 1; j+=2){
@@ -458,24 +384,9 @@ public class BadAss extends DraughtsPlayer {
                 }
             }
         }
+        //award protecting pieces furter up in the board.
         val *= Math.ceil(Math.exp(row_value-4.5));
         return val;
     }
-    
-    int[] num_white_black(DraughtsState state){
-        int[] pieces = state.getPieces();
-        int n[] = new int[2];
-        int w = 0;
-        for (int piece : pieces) {
-            if (piece == 1 || piece == 3) {
-                w++;
-            }
-        }
-        n[0] = w;
-        n[1] = Math.abs(pieces.length - w);
-        return n;
-    }
-    
 
 }
-

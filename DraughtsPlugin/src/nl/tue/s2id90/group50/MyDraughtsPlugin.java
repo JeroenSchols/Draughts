@@ -4,6 +4,9 @@ import nl.tue.s2id90.group50.own_bots.BasicAlphaBeta;
 import nl.tue.s2id90.group50.own_bots.BadAss;
 import nl.tue.s2id90.group50.own_bots.ImminentDeath;
 import nl.tue.s2id90.group50.own_bots.RandomizedAlphaBeta;
+import nl.tue.s2id90.group50.own_bots.GammaBot;
+import nl.tue.s2id90.group50.own_bots.GammaBotV2;
+import nl.tue.s2id90.group50.own_bots.NewAndImproved;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
 import nl.tue.s2id90.draughts.DraughtsPlayerProvider;
 import nl.tue.s2id90.draughts.DraughtsPlugin;
@@ -29,6 +32,9 @@ public class MyDraughtsPlugin extends DraughtsPlayerProvider implements Draughts
                 new BadAss(),
                 new ImminentDeath(),
                 new RandomizedAlphaBeta(),
+                new GammaBot(),
+                new GammaBotV2(),
+                new NewAndImproved(),
                 new UninformedPlayer(),
                 new OptimisticPlayer(),
                 new BuggyPlayer()
